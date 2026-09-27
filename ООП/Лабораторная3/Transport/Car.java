@@ -2,9 +2,11 @@ package Transport;
 
 import java.util.Arrays;
 import java.util.Random;
+import java.io.Serializable;
 
 public class Car implements Transport{
-    private class Model {
+    private class Model implements Serializable{
+        private static final long serialVersionUID = 1L;
         private String name;
         private double price;
 
