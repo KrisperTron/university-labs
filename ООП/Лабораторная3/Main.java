@@ -1,87 +1,140 @@
 import Transport.*;
-
 import java.io.*;
-import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 
 public class Main {
-    public static void main(String[] args) throws DuplicateModelNameException, ModelPriceOutOfBoundsException {
-        try {
-            System.out.println("ЗАДАНИЕ 1");
-            Transport car1 = new Car("Lada", 2);
-            System.out.println("Исходный объект для Задания 1:");
-            TransportUtils.printModelsAndPrices(car1);
+    public static void main(String[] args) {
+        Transport[] transports = new Transport[8];
+        transports[0] = new Car("Lada", 6);
+        transports[1] = new Motorbike("Ural", 5);
 
-            File byteFile = new File("transport_byte.bin");
-            try (FileOutputStream fos = new FileOutputStream(byteFile)) {
-                TransportUtils.outputTransport(car1, fos);
-            }
-
-            Transport carFromByte;
-            try (FileInputStream fis = new FileInputStream(byteFile)) {
-                carFromByte = TransportUtils.inputTransport(fis);
-            }
-            System.out.println("\n[1] Восстановлено из байтового файла (transport_byte.bin):");
-            TransportUtils.printModelsAndPrices(carFromByte);
-
-            File textFile = new File("transport_text.txt");
-            try (FileWriter fw = new FileWriter(textFile)) {
-                TransportUtils.writeTransport(car1, fw);
-            }
-
-            Transport carFromText;
-            try (FileReader fr = new FileReader(textFile)) {
-                carFromText = TransportUtils.readTransport(fr);
-            }
-            System.out.println("\n[2] Восстановлено из текстового файла (transport_text.txt):");
-            TransportUtils.printModelsAndPrices(carFromText);
-
-            System.out.println("\n[3] Вывод в System.out через writeTransport:");
-            OutputStreamWriter osw = new OutputStreamWriter(System.out);
-            TransportUtils.writeTransport(car1, osw);
-
-            System.out.println("\n[4] Ввод из System.in через readTransport.");
-            System.out.println("Введите построчно: марку, количество моделей, затем имя и цену для каждой:");
-            InputStreamReader isr = new InputStreamReader(System.in);
-            Transport carFromConsole = TransportUtils.readTransport(isr);
-
-            System.out.println("\nРезультат считывания с консоли:");
-            TransportUtils.printModelsAndPrices(carFromConsole);
-
-            Transport carOrig = new Car("Audi", 2);
-            Transport motoOrig = new Motorbike("Yamaha", 2);
-
-            File file = new File("transport_ser.dat");
-
-            try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-                oos.writeObject(carOrig);
-                oos.writeObject(motoOrig);
-            }
-
-            Transport carRestored;
-            Transport motoRestored;
-            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-                carRestored = (Transport) ois.readObject();
-                motoRestored = (Transport) ois.readObject();
-            }
-
-           // carOrig.setBrand("BMW"); // для вывода false
-
-            System.out.println("Car: марка совпадает -> " + carOrig.getBrand().equals(carRestored.getBrand()));
-            System.out.println("Car: модели совпадают -> " + Arrays.equals(carOrig.getModelsName(), carRestored.getModelsName()));
-            System.out.println("Car: цены совпадают -> " + Arrays.equals(carOrig.getModelPrices(), carRestored.getModelPrices()));
-
-            System.out.println("Moto: марка совпадает -> " + motoOrig.getBrand().equals(motoRestored.getBrand()));
-            System.out.println("Moto: модели совпадают -> " + Arrays.equals(motoOrig.getModelsName(), motoRestored.getModelsName()));
-            System.out.println("Moto: цены совпадают -> " + Arrays.equals(motoOrig.getModelPrices(), motoRestored.getModelPrices()));
-
-        } catch (DuplicateModelNameException e) {
-            System.err.println("Ошибка:" + e.getMessage());
-        } catch (ModelPriceOutOfBoundsException e) {
-            System.err.println("Ошибка: Недопустимая цена модели! (" + e.getMessage() + ")");
+        // 1. Байтовая запись в файлы (пишет сырые байты, кодировка не нужна)
+        try (OutputStream out = new FileOutputStream("car.transport")) {
+            TransportUtils.outputTransport(transports[0], out);
+            System.out.println("Автомобиль успешно записан в байтовый файл.");
         } catch (IOException e) {
-            System.err.println("Ошибка ввода-вывода при работе с потоками: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Непредвиденная ошибка: " + e.getMessage());
+            System.err.println("Ошибка записи байтового файла: " + e.getMessage());
+        }
+
+        try (OutputStream out = new FileOutputStream("bike.transport")) {
+            TransportUtils.outputTransport(transports[1], out);
+            System.out.println("Мотоцикл успешно записан в байтовый файл.");
+        } catch (IOException e) {
+            System.err.println("Ошибка записи байтового файла: " + e.getMessage());
+        }
+
+        // 2. Байтовое чтение из файлов
+        try (InputStream in = new FileInputStream("car.transport")) {
+            transports[2] = TransportUtils.inputTransport(in);
+            transports[2].setBrand("Прочитанная машина");
+        } catch (IOException | DuplicateModelNameException e) {
+            System.err.println("Ошибка чтения байтового файла: " + e.getMessage());
+        }
+
+        try (InputStream in = new FileInputStream("bike.transport")) {
+            transports[3] = TransportUtils.inputTransport(in);
+            transports[3].setBrand("Мотоцикл файл");
+        } catch (IOException | DuplicateModelNameException e) {
+            System.err.println("Ошибка чтения байтового файла: " + e.getMessage());
+        }
+
+        // 3. Символьная запись в файлы с явным указанием UTF-8
+        try (Writer out = new OutputStreamWriter(new FileOutputStream("car.txt"), StandardCharsets.UTF_8)) {
+            TransportUtils.writeTransport(transports[0], out);
+            System.out.println("Автомобиль успешно записан через символьный поток (UTF-8).");
+        } catch (IOException e) {
+            System.err.println("Ошибка записи символьного файла: " + e.getMessage());
+        }
+
+        try (Writer out = new OutputStreamWriter(new FileOutputStream("bike.txt"), StandardCharsets.UTF_8)) {
+            TransportUtils.writeTransport(transports[1], out);
+            System.out.println("Мотоцикл успешно записан через символьный поток (UTF-8).");
+        } catch (IOException e) {
+            System.err.println("Ошибка записи символьного файла: " + e.getMessage());
+        }
+
+        // 4. Символьное чтение из файлов с явным указанием UTF-8
+        try (Reader in = new InputStreamReader(new FileInputStream("car.txt"), StandardCharsets.UTF_8)) {
+            transports[4] = TransportUtils.readTransport(in);
+            transports[4].setBrand("Машина из символов");
+        } catch (IOException | DuplicateModelNameException e) {
+            System.err.println("Ошибка чтения символьного файла: " + e.getMessage());
+        }
+
+        try (Reader in = new InputStreamReader(new FileInputStream("bike.txt"), StandardCharsets.UTF_8)) {
+            transports[5] = TransportUtils.readTransport(in);
+            transports[5].setBrand("Мотоцикл из символов");
+        } catch (IOException | DuplicateModelNameException e) {
+            System.err.println("Ошибка чтения символьного файла: " + e.getMessage());
+        }
+
+        // 5. Стандартная сериализация Java
+        try (OutputStream fileOut = new FileOutputStream("car.serialized");
+             ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(transports[0]);
+            System.out.println("Автомобиль успешно сериализован.");
+        } catch (IOException e) {
+            System.err.println("Ошибка сериализации автомобиля: " + e.getMessage());
+        }
+
+        try (OutputStream fileOut = new FileOutputStream("bike.serialized");
+             ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(transports[1]);
+            System.out.println("Мотоцикл успешно сериализован.");
+        } catch (IOException e) {
+            System.err.println("Ошибка сериализации мотоцикла: " + e.getMessage());
+        }
+
+        // 6. Стандартная десериализация Java
+        try (InputStream fileIn = new FileInputStream("car.serialized");
+             ObjectInputStream in = new ObjectInputStream(fileIn)) {
+            transports[6] = (Transport) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Ошибка десериализации автомобиля: " + e.getMessage());
+        }
+
+        try (InputStream fileIn = new FileInputStream("bike.serialized");
+             ObjectInputStream in = new ObjectInputStream(fileIn)) {
+            transports[7] = (Transport) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Ошибка десериализации мотоцикла: " + e.getMessage());
+        }
+
+        // 7. Вывод информации о всех полученных объектах
+        System.out.println("\nСписок всех объектов:");
+        for (Transport transport : transports) {
+            if (transport != null) {
+                System.out.println("\nМарка: " + transport.getBrand());
+                System.out.println("Класс: " + transport.getClass().getSimpleName());
+                TransportUtils.printModelsAndPrices(transport);
+                System.out.println("Средняя цена: " + TransportUtils.avgPriceModel(transport));
+            }
+        }
+
+        // 8. Консольный ввод/вывод с явным указанием UTF-8
+        System.out.println("\nВведите построчно:");
+        System.out.println("1. Код типа (1 - Car, 2 - Motorbike)");
+        System.out.println("2. Марка");
+        System.out.println("3. Количество моделей");
+        System.out.println("4. Название модели 1");
+        System.out.println("5. Цена модели 1");
+        System.out.println("...");
+
+        try {
+            Transport transportFromReader = TransportUtils.readTransport(new InputStreamReader(System.in));
+            System.out.println("\nВывод считанного объекта через writeTransport в System.out:");
+            OutputStreamWriter osw = new OutputStreamWriter(System.out);
+            TransportUtils.writeTransport(transportFromReader, osw);
+
+            System.out.println("\nФорматированный вывод считанного объекта:");
+            TransportUtils.printModelsAndPrices(transportFromReader);
+            System.out.println("Средняя цена: " + TransportUtils.avgPriceModel(transportFromReader));
+        } catch (DuplicateModelNameException e) {
+            System.err.println("Ошибка: Модель с таким именем уже существует! (" + e.getMessage() + ")");
+        } catch (NumberFormatException e) {
+            System.err.println("Ошибка формата числа: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Ошибка ввода-вывода: " + e.getMessage());
         }
     }
 }

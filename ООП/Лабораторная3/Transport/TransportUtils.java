@@ -59,8 +59,12 @@ public class TransportUtils{
         }
     }
 
-    public static void outputTransport(Transport v, OutputStream out) throws IOException{
+    public static void outputTransport(Transport v, OutputStream out) throws IOException {
         DataOutputStream dos = new DataOutputStream(out);
+
+        byte[] typeBytes = v.getClass().getSimpleName().getBytes(StandardCharsets.UTF_8);
+        dos.writeInt(typeBytes.length);
+        dos.write(typeBytes);
 
         byte[] brandBytes = v.getBrand().getBytes(StandardCharsets.UTF_8);
         dos.writeInt(brandBytes.length);
@@ -72,7 +76,7 @@ public class TransportUtils{
         String[] names = v.getModelsName();
         double[] prices = v.getModelPrices();
 
-        for(int i = 0; i < size; i++){
+        for (int i = 0; i < size; i++) {
             byte[] modelName = names[i].getBytes(StandardCharsets.UTF_8);
 
             dos.writeInt(modelName.length);
@@ -85,22 +89,36 @@ public class TransportUtils{
     public static Transport inputTransport(InputStream in) throws IOException, DuplicateModelNameException {
         DataInputStream dis = new DataInputStream(in);
 
+        int typeLen = dis.readInt();
+        byte[] typeBytes = new byte[typeLen];
+        dis.readFully(typeBytes);
+        String type = new String(typeBytes, StandardCharsets.UTF_8);
+
         int readLen = dis.readInt();
         byte[] brandBytes = new byte[readLen];
         dis.readFully(brandBytes);
         String brand = new String(brandBytes, StandardCharsets.UTF_8);
 
-        int size = dis.readInt();
-        Transport transport = new Car(brand, 0);
+        Transport transport;
+        switch (type) {
+            case "Car":
+                transport = new Car(brand, 0);
+                break;
+            case "Motorbike":
+                transport = new Motorbike(brand, 0);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown transport type: " + type);
+        }
 
-        for(int i = 0; i < size; i++){
+        int size = dis.readInt();
+        for (int i = 0; i < size; i++) {
             int nameLen = dis.readInt();
 
             byte[] nameBytes = new byte[nameLen];
             dis.readFully(nameBytes);
 
             String name = new String(nameBytes, StandardCharsets.UTF_8);
-
             double price = dis.readDouble();
 
             transport.addModel(name, price);
@@ -109,8 +127,10 @@ public class TransportUtils{
         return transport;
     }
 
-    public static void writeTransport(Transport v, Writer out){
+    public static void writeTransport(Transport v, Writer out) {
         PrintWriter pw = new PrintWriter(out);
+
+        pw.println(v.getClass().getSimpleName());
 
         pw.println(v.getBrand());
 
@@ -120,7 +140,7 @@ public class TransportUtils{
         String[] names = v.getModelsName();
         double[] prices = v.getModelPrices();
 
-        for(int i = 0; i < size; i++){
+        for (int i = 0; i < size; i++) {
             pw.println(names[i]);
             pw.println(prices[i]);
         }
@@ -128,14 +148,30 @@ public class TransportUtils{
         pw.flush();
     }
 
-    public static Transport readTransport(Reader in) throws IOException, DuplicateModelNameException{
+    public static Transport readTransport(Reader in) throws IOException, DuplicateModelNameException {
         BufferedReader br = new BufferedReader(in);
+
+        String type = br.readLine();
+        if (type == null) {
+            throw new IOException("Unexpected end of stream: missing transport type");
+        }
 
         String brand = br.readLine();
         int size = Integer.parseInt(br.readLine().trim());
-        Transport transport = new Car(brand, 0);
 
-        for(int i = 0; i < size; i++){
+        Transport transport;
+        switch (type) {
+            case "Car":
+                transport = new Car(brand, 0);
+                break;
+            case "Motorbike":
+                transport = new Motorbike(brand, 0);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown transport type: " + type);
+        }
+
+        for (int i = 0; i < size; i++) {
             String name = br.readLine();
             double price = Double.parseDouble(br.readLine().trim());
             transport.addModel(name, price);
