@@ -108,7 +108,7 @@ public class TransportUtils{
                 transport = new Motorbike(brand, 0);
                 break;
             default:
-                throw new IllegalArgumentException("Unknown transport type: " + type);
+                throw new IllegalArgumentException("Неизвестный тип транспорта: " + type);
         }
 
         int size = dis.readInt();
@@ -153,7 +153,7 @@ public class TransportUtils{
 
         String type = br.readLine();
         if (type == null) {
-            throw new IOException("Unexpected end of stream: missing transport type");
+            throw new IOException("Неожиданное завершение потока: отсутствует тип транспорта");
         }
 
         String brand = br.readLine();
@@ -168,7 +168,7 @@ public class TransportUtils{
                 transport = new Motorbike(brand, 0);
                 break;
             default:
-                throw new IllegalArgumentException("Unknown transport type: " + type);
+                throw new IllegalArgumentException("Неизвестный тип транспорта: " + type);
         }
 
         for (int i = 0; i < size; i++) {
