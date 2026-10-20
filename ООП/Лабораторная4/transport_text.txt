@@ -1,0 +1,7 @@
+Car
+Lada
+2
+Lada Model_0
+69926.50967415319
+Lada Model_1
+96950.6943672837
