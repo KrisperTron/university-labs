@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
 import numpy as np
 from collections import deque
 
@@ -8,8 +8,8 @@ from collections import deque
 class ImageProcessingApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Лабораторная работа № 4 — Алгоритмы обработки изображений (с Заданием 5*)")
-        self.root.geometry("1440x900")
+        self.root.title("Лабораторная работа № 4 — Обработка изображений (по Лекции 7 Кудриной М.А.)")
+        self.root.geometry("1460x900")
 
         self.orig_img_pil = None
         self.gray_arr = None
@@ -20,28 +20,26 @@ class ImageProcessingApp:
         self.generate_default_image()
 
     def create_widgets(self):
-        # Верхняя панель управления
         control_frame = tk.LabelFrame(self.root, text="Параметры преобразований", padx=10, pady=8)
         control_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
 
-        # Кнопка загрузки изображения
         btn_load = tk.Button(
-            control_frame, text="Загрузить изображение", command=self.load_image,
+            control_frame, text="Загрузить картинку", command=self.load_image,
             bg="#dceeff", font=("Arial", 9, "bold"), padx=8, pady=4
         )
-        btn_load.grid(row=0, column=0, rowspan=2, padx=8, pady=5)
+        btn_load.grid(row=0, column=0, rowspan=2, padx=6, pady=5)
 
-        # Задание 1: Порог бинаризации
-        tk.Label(control_frame, text="Задание 1 (Порог бинаризации 0-255):").grid(row=0, column=1, sticky="e", padx=4)
+        # Задание 1: Порог бинаризации f0
+        tk.Label(control_frame, text="Задание 1 (Порог f0, 0-255):").grid(row=0, column=1, sticky="e", padx=4)
         self.thresh_bin_var = tk.IntVar(value=128)
         tk.Spinbox(control_frame, from_=0, to=255, textvariable=self.thresh_bin_var, width=5).grid(row=0, column=2, sticky="w", padx=4)
 
-        # Задание 2 (Вариант 5): Порог неполной пороговой обработки
-        tk.Label(control_frame, text="Задание 2, Вар. 5 (Порог неполной обр. 0-255):").grid(row=1, column=1, sticky="e", padx=4)
+        # Задание 2 (Вариант 5): Порог неполной пороговой обработки f0
+        tk.Label(control_frame, text="Задание 2, Вар. 5 (Порог f0, 0-255):").grid(row=1, column=1, sticky="e", padx=4)
         self.thresh_z2_var = tk.IntVar(value=120)
         tk.Spinbox(control_frame, from_=0, to=255, textvariable=self.thresh_z2_var, width=5).grid(row=1, column=2, sticky="w", padx=4)
 
-        # Задание 4 (Вариант 5): Внешнее оконтуривание — форма, размер ядра, якорь
+        # Задание 4 (Вариант 5): Внешнее оконтуривание
         tk.Label(control_frame, text="Задание 4 (Форма ядра):").grid(row=0, column=3, sticky="e", padx=4)
         self.kernel_shape_var = tk.StringVar(value="Прямоугольник")
         shape_combo = ttk.Combobox(
@@ -76,11 +74,11 @@ class ImageProcessingApp:
         )
         fg_combo.grid(row=1, column=6, sticky="w", padx=4)
 
-        # Задание 5* (Вариант 1): Источник для алгоритма Зонга-Суена
-        tk.Label(control_frame, text="Задание 5* (Вход Зонга-Суена):").grid(row=0, column=7, sticky="e", padx=4)
+        # Задание 5* (Вариант 1): Алгоритм Зонга-Суэна
+        tk.Label(control_frame, text="Задание 5* (Вход Зонга-Суэна):").grid(row=0, column=7, sticky="e", padx=4)
         self.z5_source_var = tk.StringVar(value="Контур из Задания 4")
         z5_combo = ttk.Combobox(
-            control_frame, textvariable=self.z5_source_var, state="readonly", width=22,
+            control_frame, textvariable=self.z5_source_var, state="readonly", width=20,
             values=["Контур из Задания 4", "Бинарное из Задания 1"]
         )
         z5_combo.grid(row=0, column=8, sticky="w", padx=4)
@@ -88,14 +86,13 @@ class ImageProcessingApp:
         self.z5_info_lbl = tk.Label(control_frame, text="Связных контуров: -", fg="#004a99", font=("Arial", 9, "bold"))
         self.z5_info_lbl.grid(row=1, column=7, columnspan=2, sticky="w", padx=8)
 
-        # Кнопка применения параметров
         btn_apply = tk.Button(
-            control_frame, text="Применить / Обновить", command=self.process_all,
+            control_frame, text="Применить", command=self.process_all,
             bg="#d4f7d4", font=("Arial", 9, "bold"), padx=10, pady=4
         )
-        btn_apply.grid(row=0, column=9, rowspan=2, padx=10, pady=5)
+        btn_apply.grid(row=0, column=9, rowspan=2, padx=6, pady=5)
 
-        # Область одновременного отображения 7 изображений
+        # Сетка изображений
         self.grid_frame = tk.Frame(self.root)
         self.grid_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=5)
 
@@ -103,12 +100,12 @@ class ImageProcessingApp:
         self.title_labels = []
         titles = [
             "1. Исходное изображение",
-            "2. Оттенки серого (Задание 1)",
+            "2. Оттенки серого (0.3R + 0.59G + 0.11B)",
             "3. Пороговая обработка (Задание 1)",
             "4. Неполная пороговая (Задание 2, Вар. 5)",
             "5. Повышение контрастности (Задание 3, Вар. 5)",
             "6. Внешнее оконтуривание (Задание 4, Вар. 5)",
-            "7. Алгоритм Зонга-Суена + связные контуры (Задание 5*, Вар. 1)"
+            "7. Скелетизация Зонга-Суэна + контуры (Задание 5*, Вар. 1)"
         ]
 
         for i in range(7):
@@ -127,39 +124,40 @@ class ImageProcessingApp:
             lbl_img.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
             self.img_labels.append(lbl_img)
 
-        # 8-я ячейка — краткая памятка по параметрам текущего запуска
+        # 8-я ячейка: формулы из Лекции 7
         info_cell = tk.Frame(self.grid_frame, bd=2, relief=tk.GROOVE, padx=10, pady=10, bg="#f9fbff")
         info_cell.grid(row=1, column=3, sticky="nsew", padx=4, pady=4)
-        tk.Label(info_cell, text="Сводка по вариантам работы", font=("Arial", 10, "bold"), bg="#f9fbff").pack(anchor="w", pady=4)
+        tk.Label(info_cell, text="Формулы по Лекции 7 (Кудрина М.А.)", font=("Arial", 10, "bold"), bg="#f9fbff").pack(anchor="w", pady=4)
         summary_text = (
-            "• Задание 1: Оттенки серого и пороговая бинаризация.\n\n"
-            "• Задание 2 (Вар. 5): Неполная пороговая обработка (рис. 1.в).\n\n"
-            "• Задание 3 (Вар. 5): Масочная фильтрация (повышение контрастности, A=0, B=1, центр=5, края=-1).\n\n"
-            "• Задание 4 (Вар. 5): Внешнее оконтуривание = Дилатация(A) \\ A.\n\n"
-            "• Задание 5* (Вар. 1): Скелетизация Зонга-Суена до толщины в 1 пиксель и выделение отдельных 8-связных контуров разными цветами."
+            "• п. 2.4.1 Оттенки серого:\n"
+            "  R' = G' = B' = 0.3·R + 0.59·G + 0.11·B\n\n"
+            "• п. 2.4.4 Задание 2 (Вар. 5, рис. 1.в):\n"
+            "  g = f (при f < f0), иначе g = 255\n\n"
+            "• п. 2.4.7 Задание 3 (Вар. 5, контрастность):\n"
+            "  C'(X,Y) = A + B · ΣΣ C(X+i, Y+j)·M(i,j)\n"
+            "  A = 0, B = 1, центр M = 5, соседи = -1\n\n"
+            "• Задание 4 (Вар. 5): Внешнее оконтуривание\n"
+            "  G(A) = (A ⊕ B) \\ A\n\n"
+            "• п. 2.4.7 Задание 5* (Вар. 1, Зонг-Суэн):\n"
+            "  Подытерации 1 и 2 + доп. итерация очистки."
         )
-        tk.Label(info_cell, text=summary_text, justify="left", wraplength=310, bg="#f9fbff", font=("Arial", 9)).pack(anchor="w")
+        tk.Label(info_cell, text=summary_text, justify="left", wraplength=320, bg="#f9fbff", font=("Arial", 9)).pack(anchor="w")
 
     def generate_default_image(self):
-        """Генерирует тестовое изображение с толстыми контурами и фигурами для наглядной проверки."""
         w, h = 280, 210
         arr = np.zeros((h, w, 3), dtype=np.uint8)
-        # Градиентный темный фон
         for y in range(h):
             for x in range(w):
                 arr[y, x] = [(x * 90) // w, (y * 90) // h, 80]
 
-        # Прямоугольная рамка
         arr[25:115, 25:125] = [240, 240, 240]
         arr[45:95, 45:105] = [40, 40, 40]
 
-        # Кольцо / круг
         yy, xx = np.ogrid[:h, :w]
         outer_circle = (xx - 200) ** 2 + (yy - 85) ** 2 <= 50 ** 2
         inner_circle = (xx - 200) ** 2 + (yy - 85) ** 2 <= 28 ** 2
         arr[outer_circle & ~inner_circle] = [255, 230, 80]
 
-        # Т-образная толстая линия внизу
         arr[150:168, 40:230] = [235, 235, 235]
         arr[130:195, 125:145] = [235, 235, 235]
 
@@ -173,34 +171,30 @@ class ImageProcessingApp:
         )
         if path:
             img = Image.open(path).convert("RGB")
-            # Ограничиваем размер до ~320x240, чтобы итерации Зонга-Суена выполнялись мгновенно
             img.thumbnail((320, 240), Image.Resampling.LANCZOS)
             self.orig_img_pil = img
             self.process_all()
 
-    # ЗАДАНИЕ 1 
+    # --- 1. ПЕРЕВОД В СЕРЫЙ И БИНАРИЗАЦИЯ (п. 2.4.1 и 2.4.3 Лекции 7) ---
     def to_grayscale(self, rgb_arr):
+        # Точные коэффициенты из п. 2.4.1 Лекции 7: 0.3*R + 0.59*G + 0.11*B
         gray = (
-            0.299 * rgb_arr[:, :, 0] +
-            0.587 * rgb_arr[:, :, 1] +
-            0.114 * rgb_arr[:, :, 2]
+            0.30 * rgb_arr[:, :, 0] +
+            0.59 * rgb_arr[:, :, 1] +
+            0.11 * rgb_arr[:, :, 2]
         )
         return np.clip(gray, 0, 255).astype(np.uint8)
 
-    def threshold_binarize(self, gray_arr, threshold):
-        return np.where(gray_arr >= threshold, 255, 0).astype(np.uint8)
+    def threshold_binarize(self, gray_arr, f0):
+        # Формула (3) п. 2.4.3 Лекции 7: g = g_max при f >= f0, иначе g_min
+        return np.where(gray_arr >= f0, 255, 0).astype(np.uint8)
 
-    # ЗАДАНИЕ 2 (ВАРИАНТ 5)
-    def incomplete_threshold(self, gray_arr, threshold):
-        """Неполная пороговая обработка (рис. 1.в): при f(x,y) >= P -> 255, иначе f(x,y)."""
-        return np.where(gray_arr >= threshold, 255, gray_arr).astype(np.uint8)
-    
-    # ЗАДАНИЕ 3 (ВАРИАНТ 5)
+    # --- 2. НЕПОЛНАЯ ПОРОГОВАЯ ОБРАБОТКА (п. 2.4.4 Лекции 7, функция «в») ---
+    def incomplete_threshold(self, gray_arr, f0):
+        return np.where(gray_arr >= f0, 255, gray_arr).astype(np.uint8)
+
+    # --- 3. ЛИНЕЙНАЯ МАСОЧНАЯ ФИЛЬТРАЦИЯ (п. 2.4.7 Лекции 7, Вариант 5) ---
     def mask_filter_task3_var5(self, gray_arr):
-        """
-        Фильтр повышения контрастности: A = 0, B = 1, M = [[0, -1, 0], [-1, 5, -1], [0, -1, 0]].
-        Края обрабатываются копированием яркости крайних рядов на внешний слой.
-        """
         A = 0.0
         B = 1.0
         M = np.array([
@@ -209,6 +203,7 @@ class ImageProcessingApp:
             [0, -1,  0]
         ], dtype=np.float32)
 
+        # Копирование яркостей крайних рядов на внешний слой (N = 1)
         padded = np.pad(gray_arr.astype(np.float32), pad_width=1, mode='edge')
         h, w = gray_arr.shape
 
@@ -221,7 +216,7 @@ class ImageProcessingApp:
         res = A + B * acc
         return np.clip(res, 0, 255).astype(np.uint8)
 
-    # ЗАДАНИЕ 4 (ВАРИАНТ 5)
+    # --- 4. ВНЕШНЕЕ ОКОНТУРИВАНИЕ (Задание 4, строго Вариант 5) ---
     def build_structuring_element(self, kw, kh, shape_name):
         kernel = np.ones((kh, kw), dtype=bool)
         cy, cx = kh // 2, kw // 2
@@ -237,10 +232,6 @@ class ImageProcessingApp:
         return kernel
 
     def external_contouring(self, bin_arr, kernel, ax, ay, fg_is_white=True):
-        """
-        Задание 4, Вариант 5: Внешнее оконтуривание.
-        Выполняется над бинарным изображением: Дилатация(A) \\ A.
-        """
         kh, kw = kernel.shape
         h, w = bin_arr.shape
 
@@ -259,7 +250,6 @@ class ImageProcessingApp:
                 if kernel[r, c]:
                     dilated |= padded[r:r + h, c:c + w]
 
-        # Внешний контур — это пиксели, добавленные при расширении (дилатации), которых не было в исходном объекте
         ext_contour = dilated & (~obj_mask)
 
         if fg_is_white:
@@ -267,15 +257,17 @@ class ImageProcessingApp:
         else:
             return np.where(ext_contour, 0, 255).astype(np.uint8)
 
-    # ЗАДАНИЕ 5* (ВАРИАНТ 1)
+    # --- 5. ПАРАЛЛЕЛЬНЫЙ АЛГОРИТМ ЗОНГА-СУЭНА (п. 2.4.7 Лекции 7, стр. 6-7) ---
     def zhang_suen_thinning(self, bin_mask):
         """
-        Алгоритм утончения (скелетизации) Зонга-Суена (Zhang-Suen).
-        Принимает булеву/целочисленную матрицу (1 - объект, 0 - фон).
-        Возвращает утонченную бинарную маску толщиной в 1 пиксель.
+        Реализация строго по Лекции 7 (стр. 6-7):
+        Матрица 3x3:
+        [P9 P2 P3]
+        [P8 P1 P4]
+        [P7 P6 P5]
+        Подытерация 1 + Подытерация 2 в цикле + дополнительная итерация очистки ступенек.
         """
         img = bin_mask.astype(np.uint8).copy()
-        # Обнуляем граничную рамку в 1 пиксель для корректного анализа 8 соседей
         img[0, :] = 0
         img[-1, :] = 0
         img[:, 0] = 0
@@ -284,19 +276,16 @@ class ImageProcessingApp:
         while True:
             # Подытерация 1
             P1 = img[1:-1, 1:-1]
-            P2 = img[0:-2, 1:-1]  # верх
-            P3 = img[0:-2, 2:]    # верх-право
-            P4 = img[1:-1, 2:]    # право
-            P5 = img[2:, 2:]      # низ-право
-            P6 = img[2:, 1:-1]    # низ
-            P7 = img[2:, 0:-2]    # низ-лево
-            P8 = img[1:-1, 0:-2]  # лево
-            P9 = img[0:-2, 0:-2]  # верх-лево
+            P2 = img[0:-2, 1:-1]
+            P3 = img[0:-2, 2:]
+            P4 = img[1:-1, 2:]
+            P5 = img[2:, 2:]
+            P6 = img[2:, 1:-1]
+            P7 = img[2:, 0:-2]
+            P8 = img[1:-1, 0:-2]
+            P9 = img[0:-2, 0:-2]
 
-            # B(P1): число ненулевых соседей
             B = P2 + P3 + P4 + P5 + P6 + P7 + P8 + P9
-
-            # A(P1): число переходов 0 -> 1 при обходе по часовой стрелке P2..P9..P2
             A = (
                 ((P2 == 0) & (P3 == 1)).astype(np.uint8) +
                 ((P3 == 0) & (P4 == 1)).astype(np.uint8) +
@@ -354,18 +343,32 @@ class ImageProcessingApp:
             if not np.any(cond1) and not np.any(cond2):
                 break
 
+        P1 = img[1:-1, 1:-1]
+        P2 = img[0:-2, 1:-1]
+        P3 = img[0:-2, 2:]
+        P4 = img[1:-1, 2:]
+        P5 = img[2:, 2:]
+        P6 = img[2:, 1:-1]
+        P7 = img[2:, 0:-2]
+        P8 = img[1:-1, 0:-2]
+        P9 = img[0:-2, 0:-2]
+
+        # Чтобы не разорвать изолированные уголки, проверяем также отсутствие противоположных соседей
+        extra_cond = (P1 == 1) & (
+            ((1 - P9) * P4 * P6 == 1) & (P2 == 0) & (P8 == 0) |
+            ((1 - P5) * P8 * P2 == 1) & (P4 == 0) & (P6 == 0) |
+            ((1 - P3) * P6 * P8 == 1) & (P2 == 0) & (P4 == 0) |
+            ((1 - P7) * P2 * P4 == 1) & (P6 == 0) & (P8 == 0)
+        )
+        img[1:-1, 1:-1][extra_cond] = 0
+
         return img
 
     def extract_and_color_connected_contours(self, skeleton_mask):
-        """
-        Выделение 8-связных контуров на утонченном изображении (скелете) с помощью обхода в ширину (BFS)
-        и раскраска каждого связного контура в свой яркий цвет.
-        """
         h, w = skeleton_mask.shape
         visited = np.zeros((h, w), dtype=bool)
         color_out = np.zeros((h, w, 3), dtype=np.uint8)
 
-        # Палитра ярких контрастных цветов для разных связных контуров
         palette = [
             (255, 60, 60),    # Красный
             (50, 220, 100),   # Зеленый
@@ -406,7 +409,6 @@ class ImageProcessingApp:
         if self.orig_img_pil is None:
             return
 
-        # Валидация ядра и якоря для Задания 4
         kw = max(1, self.kw_var.get())
         kh = max(1, self.kh_var.get())
         ax = self.ax_var.get()
@@ -415,9 +417,8 @@ class ImageProcessingApp:
         if not (0 <= ax < kw and 0 <= ay < kh):
             messagebox.showwarning(
                 "Ошибка параметров ядра",
-                f"Координаты якоря (X={ax}, Y={ay}) должны находиться внутри ядра "
-                f"размером {kw}x{kh}:\n0 <= X < {kw}, 0 <= Y < {kh}.\n"
-                f"Якорь будет автоматически установлен в центр."
+                f"Координаты якоря (X={ax}, Y={ay}) должны быть внутри ядра {kw}x{kh}.\n"
+                f"Якорь установлен в центр ({kw // 2}, {kh // 2})."
             )
             ax = kw // 2
             ay = kh // 2
@@ -429,24 +430,15 @@ class ImageProcessingApp:
 
         rgb_arr = np.array(self.orig_img_pil)
 
-        # 1. Оттенки серого (Задание 1)
         self.gray_arr = self.to_grayscale(rgb_arr)
-
-        # 2. Пороговая обработка (Задание 1)
         self.bin_arr = self.threshold_binarize(self.gray_arr, thresh_bin)
-
-        # 3. Неполная пороговая обработка (Задание 2, Вариант 5)
         z2_arr = self.incomplete_threshold(self.gray_arr, thresh_z2)
-
-        # 4. Линейная масочная фильтрация (Задание 3, Вариант 5)
         z3_arr = self.mask_filter_task3_var5(self.gray_arr)
 
-        # 5. Внешнее оконтуривание (Задание 4, Вариант 5)
         kernel = self.build_structuring_element(kw, kh, self.kernel_shape_var.get())
         fg_is_white = (self.fg_color_var.get() == "Белый (255)")
         self.edge_arr = self.external_contouring(self.bin_arr, kernel, ax, ay, fg_is_white)
 
-        # 6. Утончение линий и выделение связных контуров (Задание 5*, Вариант 1)
         if self.z5_source_var.get() == "Контур из Задания 4":
             src_for_z5 = (self.edge_arr == 255) if fg_is_white else (self.edge_arr == 0)
         else:
@@ -456,7 +448,6 @@ class ImageProcessingApp:
         z5_color_arr, num_contours = self.extract_and_color_connected_contours(skeleton)
         self.z5_info_lbl.config(text=f"Найдено связных контуров: {num_contours}")
 
-        # Вывод всех 7 изображений на экран
         images_to_show = [
             self.orig_img_pil,
             Image.fromarray(self.gray_arr),
@@ -479,3 +470,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = ImageProcessingApp(root)
     root.mainloop()
+    
