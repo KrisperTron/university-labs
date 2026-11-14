@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 	"math"
@@ -79,18 +80,24 @@ func drawPolygon(screen *ebiten.Image, pts ...Point3D) {
 }
 
 func (g *Game) Update() error {
-	// Перемещение (W/S/A/D)
+	// Перемещение (W/S/A/D - X И Y; Q/E — перемещение по Z)
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
-		g.tx += 4
+		g.tx -= 4 // влево
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		g.tx -= 4
+		g.tx += 4 // вправо
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyW) {
-		g.ty += 4
+		g.ty -= 4 // вверх
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyS) {
-		g.ty -= 4
+		g.ty += 4 // вниз
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyQ) {
+		g.tz -= 4 // назад по оси Z
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyE) {
+		g.tz += 4 // вперед по оси Z
 	}
 
 	// Вращение (Стрелки и U/O)
@@ -148,8 +155,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	vector.DrawFilledRect(screen, 0, 0, 800, 28, color.RGBA{30, 30, 30, 255}, false)
-	// Перемещение: WASD | Вращение: Стрелки, U/O | Масштаб: +/-
-	ebitenutil.DebugPrintAt(screen, "Move: WASD | Rotate: Arrows, U/O | Scale: +/-", 10, 6)
+	// Перемещение: WASDEQ | Вращение: Стрелки, U/O | Масштаб: +/-
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Move WASD(XY)/QE(Z) | T: (%.0f, %.0f, %.0f)", g.tx, g.ty, g.tz)+" | Rotate: Arrows, U/O | Scale: +/-", 10, 6)
 }
 
 func (g *Game) Layout(w, h int) (int, int) { return 800, 600 }
