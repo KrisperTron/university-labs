@@ -151,6 +151,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			drawPolygon(screen, p0, p1, p2, p3)
 
 			vector.DrawFilledCircle(screen, 400+float32(p0.X), 300+float32(p0.Y), 1.5, color.RGBA{200, 0, 0, 255}, true)
+			if i == rows-2 {
+				vector.DrawFilledCircle(screen, 400+float32(p3.X), 300+float32(p3.Y), 1.5, color.RGBA{200, 0, 0, 255}, true)
+			}
 		}
 	}
 
